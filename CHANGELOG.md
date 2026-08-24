@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Select and lock RustCrypto `ml-kem` 0.3.2 with ML-KEM-768.
+- Add a zeroizing ML-KEM-768 encapsulation and decapsulation primitive with unit tests.
+- Document the minimal stack and the boundary between primitive selection and transport security.
+
 ## 0.2.0
 
 - Add workspace initialization and secure default directories.

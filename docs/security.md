@@ -42,6 +42,12 @@ Identity key IDs are SHA-256 hashes of both public keys. Private identity files 
 
 The audit chain uses SHA-256. It signs each computed record hash with the source identity.
 
+### Selected Key Establishment Primitive
+
+SPACL selects ML-KEM-768 from FIPS 203 for future transport key establishment. The implementation uses the RustCrypto `ml-kem` crate version 0.3.2 with its `getrandom` and `zeroize` features. A unit-tested primitive generates recipient keys, encapsulates a 32-byte shared secret, and decapsulates the matching ciphertext.
+
+This selection does not make the current HTTP interface secure. SPACL does not yet authenticate ML-KEM public keys, bind endpoint identities to a handshake transcript, derive traffic keys, encrypt messages, prevent downgrade, or rotate session keys. The upstream crate also states that it has not received an independent audit. Treat this code as an explicit dependency and parameter choice, not as a production transport claim.
+
 ## Two-Person Rule
 
 A high-risk token requires two distinct operator IDs. The coordination node signs the operator assertions into the token. The current API does not authenticate operators and does not collect operator signatures. This control is a workflow check, not cryptographic proof of human approval.

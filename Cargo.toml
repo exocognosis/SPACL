@@ -18,6 +18,7 @@ dirs = "6.0"
 ed25519-dalek = { version = "2.2", features = ["rand_core"] }
 hex = "0.4"
 ml-dsa = { version = "0.1.1", features = ["getrandom", "zeroize"] }
+ml-kem = { version = "0.3.2", features = ["getrandom", "zeroize"] }
 rand = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1.0", features = ["derive"] }

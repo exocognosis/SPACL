@@ -50,6 +50,7 @@ You should now see four audit chains: one coordinator chain and three robot chai
 ## Features
 
 - [x] Hybrid ML-DSA-65 and Ed25519 device identity
+- [x] ML-KEM-768 primitive selection and round-trip validation
 - [x] Signed action token issuance and robot-side verification
 - [x] Sequence, replay, expiry, context, and policy gates
 - [x] Persistent robot registry and identity revocation
@@ -114,11 +115,14 @@ The current HTTP services do not provide transport security or client authentica
 
 - **Core language:** Rust 1.88 or later
 - **Signatures:** ML-DSA-65 (Federal Information Processing Standard (FIPS) 204) and Ed25519
+- **Key establishment primitive:** ML-KEM-768 (FIPS 203); selected and tested, but not connected to the HTTP transport
 - **Hashing:** SHA-256
 - **Interfaces:** REST, OpenAPI 3.1, JSON, and a Clap CLI
 - **State:** Atomic JSON snapshots and append-only JSON Lines audit chains
 - **Robot integration:** Simulator in v0.2.0; ROS 2 adapter is planned
 - **Deployment:** One executable or one container per node
+
+`Cargo.lock` fixes the exact dependency graph. The selected direct cryptography crates are `ml-dsa` 0.1.1, `ml-kem` 0.3.2, and `ed25519-dalek` 2.2. The current network interface remains plaintext HTTP. See [Minimal Stack](docs/stack.md) and [Security Model](docs/security.md).
 
 ## Quick Start
 
@@ -221,6 +225,7 @@ Install [just](https://github.com/casey/just). Then run `just init`, `just demo`
 ## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Minimal technology stack](docs/stack.md)
 - [Security model and token format](docs/security.md)
 - [API reference](docs/api.md)
 - [OpenAPI 3.1](docs/openapi.yaml)
