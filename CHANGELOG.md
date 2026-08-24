@@ -9,6 +9,9 @@
 - Add persistent exclusive task ownership and conflict rejection during token issuance.
 - Extend the three-robot demo with token distribution, one invalid-token rejection, shared task state, and verified audit logs.
 - Add task ownership API endpoints and status output.
+- Make the three-robot demo verify all four audit chains and save each distributed token.
+- Prevent interactive token expiry and ensure the invalid-token test always changes the action.
+- Add a reproducible 70-second demo video and a README walkthrough.
 
 ## 0.2.0
 

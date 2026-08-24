@@ -14,6 +14,10 @@ single-agent:
 demo:
     cargo run -- --data-dir "{{ data_dir }}" demo --watch
 
+demo-video:
+    cargo build --release --locked
+    python3 scripts/render_demo_video.py
+
 coordinator:
     cargo run -- --data-dir "{{ data_dir }}" coordinator --config "{{ data_dir }}/config/coordinator.toml"
 

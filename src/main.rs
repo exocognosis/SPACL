@@ -372,7 +372,7 @@ async fn run(command: Command, data_dir: PathBuf, compact: bool) -> Result<()> {
             output,
         } => {
             let output = output.unwrap_or_else(|| {
-                data_dir.join(format!("demos/{}", Utc::now().format("%Y%m%d-%H%M%S")))
+                data_dir.join(format!("demos/{}", Utc::now().format("%Y%m%d-%H%M%S-%3f")))
             });
             run_demo(&output, interactive, watch, compact)?;
         }
@@ -978,6 +978,7 @@ fn run_demo(data_dir: &Path, interactive: bool, watch: bool, compact: bool) -> R
     let coordinator_dir = data_dir.join("coordinator");
     let mut coordinator = Coordinator::open(coordinator_dir.clone())?;
     let mut completed = Vec::new();
+    let mut robot_audits = Vec::new();
 
     for (index, default_skill) in ["move", "pick", "place"].into_iter().enumerate() {
         let robot_id = format!("sim-robot-{}", index + 1);
@@ -1027,6 +1028,15 @@ fn run_demo(data_dir: &Path, interactive: bool, watch: bool, compact: bool) -> R
         } else {
             vec![]
         };
+        if risk == RiskLevel::High {
+            println!(
+                "{} operator-alice + operator-bob",
+                "approval assertions".cyan().bold()
+            );
+        }
+        if interactive {
+            pause(&format!("issue and execute `{skill}` on {robot_id}"))?;
+        }
         let token = coordinator.issue_token(TokenRequest {
             robot_id: robot_id.clone(),
             action: RobotAction {
@@ -1046,6 +1056,10 @@ fn run_demo(data_dir: &Path, interactive: bool, watch: bool, compact: bool) -> R
             risk,
             approvals,
         })?;
+        fs::write(
+            robot_dir.join("token.json"),
+            serde_json::to_vec_pretty(&token)?,
+        )?;
         println!(
             "{} coordinator -> {} token={} task={} sequence={}",
             "token distributed".cyan().bold(),
@@ -1069,9 +1083,7 @@ fn run_demo(data_dir: &Path, interactive: bool, watch: bool, compact: bool) -> R
                 format_time(token.claims.expires_at_unix_ms)
             );
         }
-        if interactive {
-            pause(&format!("execute `{skill}` on {robot_id}"))?;
-        }
+        let robot_public = identity.public.clone();
         let mut runtime = RobotRuntime::open(
             &robot_id,
             identity,
@@ -1080,7 +1092,11 @@ fn run_demo(data_dir: &Path, interactive: bool, watch: bool, compact: bool) -> R
         )?;
         if index == 0 {
             let mut invalid_token = token.clone();
-            invalid_token.claims.action.skill = "wait".into();
+            invalid_token.claims.action.skill = if skill == "wait" {
+                "move".into()
+            } else {
+                "wait".into()
+            };
             match runtime.execute(&invalid_token, &context) {
                 Ok(_) => bail!("tampered demo token was accepted"),
                 Err(error) => println!(
@@ -1104,20 +1120,37 @@ fn run_demo(data_dir: &Path, interactive: bool, watch: bool, compact: bool) -> R
             print_audit(&robot_dir.join("audit.jsonl"), 0)?;
         }
         completed.push(receipt);
+        robot_audits.push((robot_id, robot_dir.join("audit.jsonl"), robot_public));
     }
     println!("\n{}", "shared task state".cyan().bold());
     for ownership in coordinator.tasks() {
         println!("  {} -> {}", ownership.task_id, ownership.robot_id);
     }
+    let coordinator_records = AuditLog::verify(
+        &coordinator_dir.join("audit.jsonl"),
+        std::slice::from_ref(&coordinator.identity.public),
+    )?;
+    let mut verified_robot_audits = serde_json::Map::new();
+    println!("\n{}", "audit chains verified".green().bold());
+    println!("  coordinator records={}", coordinator_records.len());
+    for (robot_id, audit_path, public_identity) in &robot_audits {
+        let records = AuditLog::verify(audit_path, std::slice::from_ref(public_identity))?;
+        println!("  {robot_id} records={}", records.len());
+        verified_robot_audits.insert(robot_id.clone(), serde_json::json!(records.len()));
+    }
     let result = serde_json::json!({
         "status": "completed", "robots": completed.len(), "receipts": completed,
         "task_ownership": coordinator.tasks(),
+        "audit_verification": {
+            "coordinator": coordinator_records.len(),
+            "robots": verified_robot_audits,
+        },
         "coordinator_audit": coordinator_dir.join("audit.jsonl"), "output": data_dir,
     });
     println!("\n{}", "demo complete".green().bold());
     print_json(&result, compact)?;
     println!(
-        "You should now see four audit chains under {}.",
+        "Four verified audit chains are under {}.",
         data_dir.display()
     );
     Ok(())

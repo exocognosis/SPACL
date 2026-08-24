@@ -45,6 +45,20 @@ spacl audit pretty \
 
 You should now see four audit chains: one coordinator chain and three robot chains.
 
+## How It Works
+
+[![Watch the 70-second SPACL multi-agent demo](docs/demo/spacl-multi-agent-demo-poster.png)](docs/demo/spacl-multi-agent-demo.mp4)
+
+**[Watch the 70-second MP4 demo](docs/demo/spacl-multi-agent-demo.mp4).**
+
+1. The coordinator assigns one task to each of three simulated robots.
+2. It signs and distributes one action token for each task.
+3. The first robot rejects a token after its signed action is modified.
+4. Each robot accepts its valid token and runs its simulated action.
+5. The coordinator prints the shared task owners. SPACL then verifies the coordinator audit chain and all three robot audit chains.
+
+The video uses output from the real SPACL binary. Run `just demo-video` to rebuild it.
+
 **Key value**
 
 - Hybrid post-quantum and classical identity signatures

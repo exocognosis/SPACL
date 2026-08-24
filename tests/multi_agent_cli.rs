@@ -30,6 +30,9 @@ fn demo_distributes_tokens_and_shows_shared_task_state() {
     }
     assert!(stdout.contains("invalid token rejected sim-robot-1"));
     assert!(stdout.contains("shared task state"));
+    assert!(stdout.contains("audit chains verified"));
+    assert!(stdout.contains("coordinator records=9"));
+    assert!(stdout.contains("sim-robot-1 records=3"));
 
     let state: serde_json::Value = serde_json::from_slice(
         &fs::read(output_dir.join("coordinator/state.json")).expect("read state"),
@@ -56,6 +59,7 @@ fn demo_distributes_tokens_and_shows_shared_task_state() {
 
     for index in 1..=3 {
         let robot_id = format!("sim-robot-{index}");
+        assert!(output_dir.join(&robot_id).join("token.json").exists());
         let public_identity: PublicIdentity = serde_json::from_slice(
             &fs::read(output_dir.join(&robot_id).join("public.json"))
                 .expect("read robot public identity"),
