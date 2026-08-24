@@ -15,6 +15,8 @@
 - Move the operational value proposition to the top of the README and add a concrete warehouse demo scenario.
 - Add a repository-scoped threat model with trust boundaries, attacker stories, security invariants, and severity guidance.
 - Embed the full demo loop in the top-level README with an animated GIF and a direct raw MP4 link.
+- Rewrite the README as one reader path: product, demo, problem, solution, quick start, architecture, features, threat model, specifications, repository layout, documentation, roadmap, and license.
+- Move implementation details from the README into focused architecture, security, stack, API, deployment, configuration, ROS 2, and troubleshooting documents.
 
 ## 0.2.0
 
