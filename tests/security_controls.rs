@@ -3,8 +3,9 @@ use std::{collections::BTreeMap, fs};
 use chrono::Utc;
 use spacl::crypto::canonical_json;
 use spacl::{
-    Approval, AuditEvent, AuditLog, Coordinator, ExecutionContext, ExecutionError, HybridIdentity,
-    PolicyConstraints, RiskLevel, RobotAction, RobotRegistration, RobotRuntime, TokenRequest,
+    Approval, AuditEvent, AuditLog, Coordinator, CoordinatorError, ExecutionContext,
+    ExecutionError, HybridIdentity, PolicyConstraints, RiskLevel, RobotAction, RobotRegistration,
+    RobotRuntime, TokenRequest,
 };
 
 struct Fixture {
@@ -150,6 +151,57 @@ fn revoked_robot_cannot_receive_tokens() {
     let mut fixture = Fixture::new();
     fixture.coordinator.revoke("robot-1").unwrap();
     assert!(fixture.coordinator.issue_token(fixture.request()).is_err());
+}
+
+#[test]
+fn task_owner_blocks_token_issuance_to_another_robot() {
+    let mut fixture = Fixture::new();
+    let second_identity = HybridIdentity::generate("robot-2");
+    fixture
+        .coordinator
+        .enroll(RobotRegistration {
+            robot_id: "robot-2".into(),
+            display_name: "Second Robot".into(),
+            identity: second_identity.public.clone(),
+        })
+        .unwrap();
+
+    fixture.coordinator.issue_token(fixture.request()).unwrap();
+    let mut conflicting_request = fixture.request();
+    conflicting_request.robot_id = "robot-2".into();
+    assert!(matches!(
+        fixture.coordinator.issue_token(conflicting_request),
+        Err(CoordinatorError::TaskOwnershipConflict {
+            task_id,
+            owner,
+            requested,
+        }) if task_id == "task-1" && owner == "robot-1" && requested == "robot-2"
+    ));
+    assert_eq!(fixture.coordinator.tasks().len(), 1);
+    assert_eq!(fixture.coordinator.tasks()[0].robot_id, "robot-1");
+}
+
+#[test]
+fn task_ownership_persists_across_coordinator_restart() {
+    let temporary = tempfile::tempdir().unwrap();
+    let coordinator_dir = temporary.path().join("coordinator");
+    {
+        let mut coordinator = Coordinator::open(coordinator_dir.clone()).unwrap();
+        let identity = HybridIdentity::generate("robot-1");
+        coordinator
+            .enroll(RobotRegistration {
+                robot_id: "robot-1".into(),
+                display_name: "Test Robot".into(),
+                identity: identity.public.clone(),
+            })
+            .unwrap();
+        coordinator.assign_task("task-1", "robot-1").unwrap();
+    }
+
+    let coordinator = Coordinator::open(coordinator_dir).unwrap();
+    assert_eq!(coordinator.status()["task_count"], 1);
+    assert_eq!(coordinator.tasks()[0].task_id, "task-1");
+    assert_eq!(coordinator.tasks()[0].robot_id, "robot-1");
 }
 
 #[test]

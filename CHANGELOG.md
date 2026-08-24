@@ -6,6 +6,9 @@
 - Add a zeroizing ML-KEM-768 encapsulation and decapsulation primitive with unit tests.
 - Document the minimal stack and the boundary between primitive selection and transport security.
 - Add a one-command single-agent token, verification, execution, and audit loop.
+- Add persistent exclusive task ownership and conflict rejection during token issuance.
+- Extend the three-robot demo with token distribution, one invalid-token rejection, shared task state, and verified audit logs.
+- Add task ownership API endpoints and status output.
 
 ## 0.2.0
 

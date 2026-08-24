@@ -15,7 +15,7 @@ use crate::{
     crypto::{canonical_json, sha256_hex},
     model::{
         ActionTokenClaims, ActivitySummary, RiskLevel, RobotRecord, RobotRegistration,
-        SignedActionToken, TokenRequest,
+        SignedActionToken, TaskOwnership, TokenRequest,
     },
 };
 
@@ -33,6 +33,14 @@ pub enum CoordinatorError {
     TwoPersonApprovalRequired,
     #[error("token TTL must be between 1 and 300 seconds")]
     InvalidTtl,
+    #[error("task ID must not be empty")]
+    InvalidTaskId,
+    #[error("task {task_id} is owned by {owner}; requested robot was {requested}")]
+    TaskOwnershipConflict {
+        task_id: String,
+        owner: String,
+        requested: String,
+    },
     #[error(transparent)]
     Internal(#[from] anyhow::Error),
 }
@@ -40,6 +48,8 @@ pub enum CoordinatorError {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 struct PersistentState {
     robots: BTreeMap<String, RobotRecord>,
+    #[serde(default)]
+    tasks: BTreeMap<String, TaskOwnership>,
     #[serde(default)]
     last_activity: Option<ActivitySummary>,
 }
@@ -159,6 +169,7 @@ impl Coordinator {
                 return Err(CoordinatorError::TwoPersonApprovalRequired);
             }
         }
+        self.assign_task(&request.context.task_id, &request.robot_id)?;
         let record = self
             .state
             .robots
@@ -197,8 +208,59 @@ impl Coordinator {
         Ok(token)
     }
 
+    pub fn assign_task(
+        &mut self,
+        task_id: &str,
+        robot_id: &str,
+    ) -> Result<TaskOwnership, CoordinatorError> {
+        if task_id.trim().is_empty() {
+            return Err(CoordinatorError::InvalidTaskId);
+        }
+        let robot = self
+            .state
+            .robots
+            .get(robot_id)
+            .ok_or_else(|| CoordinatorError::UnknownRobot(robot_id.into()))?;
+        if robot.revoked {
+            return Err(CoordinatorError::RevokedRobot(robot_id.into()));
+        }
+        if let Some(ownership) = self.state.tasks.get(task_id) {
+            if ownership.robot_id == robot_id {
+                return Ok(ownership.clone());
+            }
+            return Err(CoordinatorError::TaskOwnershipConflict {
+                task_id: task_id.into(),
+                owner: ownership.robot_id.clone(),
+                requested: robot_id.into(),
+            });
+        }
+
+        let ownership = TaskOwnership {
+            task_id: task_id.into(),
+            robot_id: robot_id.into(),
+            assigned_at_unix_ms: Utc::now().timestamp_millis(),
+        };
+        self.state.tasks.insert(task_id.into(), ownership.clone());
+        self.set_activity("task.assigned", task_id);
+        self.persist()?;
+        self.audit.append(
+            AuditEvent {
+                kind: "task.assigned".into(),
+                actor: "coordinator".into(),
+                subject: task_id.into(),
+                detail: serde_json::json!({"robot_id": robot_id}),
+            },
+            &self.identity,
+        )?;
+        Ok(ownership)
+    }
+
     pub fn robots(&self) -> Vec<RobotRecord> {
         self.state.robots.values().cloned().collect()
+    }
+
+    pub fn tasks(&self) -> Vec<TaskOwnership> {
+        self.state.tasks.values().cloned().collect()
     }
 
     pub fn status(&self) -> serde_json::Value {
@@ -207,6 +269,8 @@ impl Coordinator {
             "identity_key_id": self.identity.public.key_id,
             "robot_count": self.state.robots.len(),
             "robots": self.robots(),
+            "task_count": self.state.tasks.len(),
+            "tasks": self.tasks(),
             "last_activity": self.state.last_activity,
         })
     }

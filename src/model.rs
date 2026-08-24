@@ -122,6 +122,18 @@ pub struct RobotRecord {
     pub next_sequence: u64,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TaskOwnership {
+    pub task_id: String,
+    pub robot_id: String,
+    pub assigned_at_unix_ms: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TaskAssignmentRequest {
+    pub robot_id: String,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ExecuteRequest {
     pub token: SignedActionToken,

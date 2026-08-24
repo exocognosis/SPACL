@@ -62,6 +62,53 @@ paths:
               schema:
                 type: object
                 additionalProperties: true
+  /v1/tasks:
+    get:
+      tags: [coordinator]
+      summary: Read current task ownership
+      responses:
+        "200":
+          description: Current task ownership.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tasks]
+                properties:
+                  tasks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TaskOwnership"
+  /v1/tasks/{task_id}/assign:
+    post:
+      tags: [coordinator]
+      summary: Assign an unowned task to one robot
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskAssignmentRequest"
+      responses:
+        "201":
+          description: Task ownership.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskOwnership"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/Error"
   /v1/robots:
     post:
       tags: [coordinator]
@@ -119,6 +166,8 @@ paths:
         "403":
           $ref: "#/components/responses/Error"
         "404":
+          $ref: "#/components/responses/Error"
+        "409":
           $ref: "#/components/responses/Error"
         "422":
           $ref: "#/components/responses/Error"
@@ -227,6 +276,23 @@ components:
           type: string
         identity:
           $ref: "#/components/schemas/PublicIdentity"
+    TaskAssignmentRequest:
+      type: object
+      required: [robot_id]
+      properties:
+        robot_id:
+          type: string
+    TaskOwnership:
+      type: object
+      required: [task_id, robot_id, assigned_at_unix_ms]
+      properties:
+        task_id:
+          type: string
+        robot_id:
+          type: string
+        assigned_at_unix_ms:
+          type: integer
+          format: int64
     RobotAction:
       type: object
       required: [skill]
@@ -314,4 +380,3 @@ components:
         signature:
           type: object
           additionalProperties: true
-

@@ -24,6 +24,14 @@ The runtime has not consumed an earlier token. Check `next_sequence` with `spacl
 
 Do not edit a sequence number. The coordinator signature covers it.
 
+## Task Ownership Conflict
+
+Error code: `TASK_OWNERSHIP_CONFLICT`
+
+Another robot owns the requested task. Read the current owners from `GET /v1/tasks` or `spacl status`. Send the action to the current owner or use a different task ID.
+
+Version 0.2.0 does not support task reassignment. Do not edit `state.json` to change an owner.
+
 ## Token Expired
 
 Error code: `TOKEN_EXPIRED`
@@ -74,4 +82,3 @@ chmod 600 /path/to/robot.identity.json
 Check the bind address. Then check whether another process uses the port. The default coordinator port is `8080`. The default robot port is `8081`.
 
 Use `--json-logs` when another system collects logs. Omit it for readable terminal logs.
-

@@ -25,7 +25,7 @@ GET /v1/status
 GET /metrics
 ```
 
-`/v1/status` returns the node role, current state, and last activity. `/metrics` returns Prometheus text exposition for requests, issued tokens, token issue time, executions, and rejection codes.
+`/v1/status` returns the node role, current state, task ownership, and last activity. `/metrics` returns Prometheus text exposition for requests, issued tokens, token issue time, executions, and rejection codes.
 
 ## Enroll a Robot
 
@@ -55,6 +55,20 @@ Generate the `identity` object with `spacl keygen`. Do not send the private iden
 ```text
 GET /v1/fleet
 ```
+
+## Read and Assign Tasks
+
+```text
+GET /v1/tasks
+POST /v1/tasks/order-1042/assign
+Content-Type: application/json
+```
+
+```json
+{"robot_id": "robot-1"}
+```
+
+Task ownership is exclusive. Token issuance assigns an unowned task to the requested robot. The coordinator returns `TASK_OWNERSHIP_CONFLICT` if another robot owns the task.
 
 ## Issue a Token
 
@@ -87,7 +101,7 @@ Content-Type: application/json
 }
 ```
 
-Use two distinct approval objects when `risk` is `high`.
+Use two distinct approval objects when `risk` is `high`. Token issuance also claims an unowned `context.task_id` for the target robot.
 
 ## Execute a Token
 

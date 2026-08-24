@@ -21,7 +21,7 @@ fn single_agent_cli_issues_verifies_executes_and_audits() {
     assert!(stdout.contains("1. token issued"));
     assert!(stdout.contains("2. token verified"));
     assert!(stdout.contains("3. action completed move"));
-    assert!(stdout.contains("4. audit chains verified coordinator=2 robot=2"));
+    assert!(stdout.contains("4. audit chains verified coordinator=3 robot=2"));
 
     let token: SignedActionToken =
         serde_json::from_slice(&fs::read(output_dir.join("token.json")).expect("read token"))
@@ -55,6 +55,6 @@ fn single_agent_cli_issues_verifies_executes_and_audits() {
         &[robot_public],
     )
     .expect("verify robot audit");
-    assert_eq!(coordinator_records.len(), 2);
+    assert_eq!(coordinator_records.len(), 3);
     assert_eq!(robot_records.len(), 2);
 }

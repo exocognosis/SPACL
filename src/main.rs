@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use spacl::{
     ApiErrorBody, Approval, AuditLog, AuditRecord, Coordinator, CoordinatorError, ExecuteRequest,
     ExecutionContext, ExecutionError, HybridIdentity, Metrics, PolicyConstraints, PublicIdentity,
-    RiskLevel, RobotAction, RobotRegistration, RobotRuntime, TokenRequest,
+    RiskLevel, RobotAction, RobotRegistration, RobotRuntime, TaskAssignmentRequest, TokenRequest,
 };
 use tokio::sync::Mutex;
 use tower_http::{
@@ -813,6 +813,25 @@ fn print_status_value(value: &serde_json::Value, compact: bool) -> Result<()> {
             );
         }
     }
+    if let Some(tasks) = value.get("tasks") {
+        let task_values: Vec<&serde_json::Value> = match tasks {
+            serde_json::Value::Array(values) => values.iter().collect(),
+            serde_json::Value::Object(values) => values.values().collect(),
+            _ => vec![],
+        };
+        println!("  owned tasks: {}", task_values.len());
+        for task in task_values {
+            let task_id = task
+                .get("task_id")
+                .and_then(|value| value.as_str())
+                .unwrap_or("unknown");
+            let robot_id = task
+                .get("robot_id")
+                .and_then(|value| value.as_str())
+                .unwrap_or("unknown");
+            println!("    {task_id:<24} owner={robot_id}");
+        }
+    }
     Ok(())
 }
 
@@ -978,10 +997,17 @@ fn run_demo(data_dir: &Path, interactive: bool, watch: bool, compact: bool) -> R
             identity: identity.public.clone(),
         })?;
         let context = ExecutionContext {
-            task_id: "warehouse-demo".into(),
+            task_id: format!("warehouse-task-{}", index + 1),
             zone: format!("cell-{}", index + 1),
             state_hash: "sha256:demo-world-v1".into(),
         };
+        let ownership = coordinator.assign_task(&context.task_id, &robot_id)?;
+        println!(
+            "{} {} -> {}",
+            "task assigned".cyan().bold(),
+            ownership.task_id,
+            ownership.robot_id
+        );
         let risk = if skill == "pick" {
             RiskLevel::High
         } else {
@@ -1020,6 +1046,14 @@ fn run_demo(data_dir: &Path, interactive: bool, watch: bool, compact: bool) -> R
             risk,
             approvals,
         })?;
+        println!(
+            "{} coordinator -> {} token={} task={} sequence={}",
+            "token distributed".cyan().bold(),
+            robot_id,
+            short_id(&token.claims.token_id.to_string()),
+            context.task_id,
+            token.claims.sequence
+        );
         if watch {
             println!(
                 "\n{} {}",
@@ -1044,16 +1078,40 @@ fn run_demo(data_dir: &Path, interactive: bool, watch: bool, compact: bool) -> R
             coordinator.identity.public.clone(),
             robot_dir.clone(),
         )?;
+        if index == 0 {
+            let mut invalid_token = token.clone();
+            invalid_token.claims.action.skill = "wait".into();
+            match runtime.execute(&invalid_token, &context) {
+                Ok(_) => bail!("tampered demo token was accepted"),
+                Err(error) => println!(
+                    "{} {} reason={}",
+                    "invalid token rejected".yellow().bold(),
+                    robot_id,
+                    error
+                ),
+            }
+        }
         let receipt = runtime.execute(&token, &context)?;
-        println!("{} {} {}", "completed".green().bold(), robot_id, skill);
+        println!("{} {}", "valid token accepted".green().bold(), robot_id);
+        println!(
+            "{} {} {}",
+            "action completed".green().bold(),
+            robot_id,
+            skill
+        );
         if watch {
             print_json(&receipt, compact)?;
             print_audit(&robot_dir.join("audit.jsonl"), 0)?;
         }
         completed.push(receipt);
     }
+    println!("\n{}", "shared task state".cyan().bold());
+    for ownership in coordinator.tasks() {
+        println!("  {} -> {}", ownership.task_id, ownership.robot_id);
+    }
     let result = serde_json::json!({
         "status": "completed", "robots": completed.len(), "receipts": completed,
+        "task_ownership": coordinator.tasks(),
         "coordinator_audit": coordinator_dir.join("audit.jsonl"), "output": data_dir,
     });
     println!("\n{}", "demo complete".green().bold());
@@ -1239,6 +1297,8 @@ async fn run_coordinator(bind: SocketAddr, data_dir: PathBuf) -> Result<()> {
         .route("/metrics", get(coordinator_metrics))
         .route("/v1/status", get(coordinator_status))
         .route("/v1/fleet", get(coordinator_status))
+        .route("/v1/tasks", get(coordinator_tasks))
+        .route("/v1/tasks/{task_id}/assign", post(assign_task))
         .route("/v1/robots", post(enroll))
         .route("/v1/robots/{robot_id}/revoke", post(revoke))
         .route("/v1/tokens", post(issue_token))
@@ -1312,6 +1372,32 @@ async fn runtime_metrics(State(state): State<RuntimeState>) -> String {
 async fn coordinator_status(State(state): State<CoordinatorState>) -> Json<serde_json::Value> {
     state.metrics.request();
     Json(state.coordinator.lock().await.status())
+}
+
+async fn coordinator_tasks(State(state): State<CoordinatorState>) -> Json<serde_json::Value> {
+    state.metrics.request();
+    Json(serde_json::json!({"tasks": state.coordinator.lock().await.tasks()}))
+}
+
+async fn assign_task(
+    State(state): State<CoordinatorState>,
+    AxumPath(task_id): AxumPath<String>,
+    Json(request): Json<TaskAssignmentRequest>,
+) -> ApiResult {
+    state.metrics.request();
+    let result = state
+        .coordinator
+        .lock()
+        .await
+        .assign_task(&task_id, &request.robot_id);
+    match result {
+        Ok(ownership) => api_json(StatusCode::CREATED, ownership),
+        Err(error) => {
+            let api_error = ApiError::from(error);
+            state.metrics.rejection(&api_error.body.code);
+            Err(api_error)
+        }
+    }
 }
 
 async fn enroll(
@@ -1498,6 +1584,24 @@ impl From<CoordinatorError> for ApiError {
                 error.to_string(),
                 "Set ttl_seconds between 1 and 300.",
                 true,
+            ),
+            CoordinatorError::InvalidTaskId => Self::new(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "INVALID_TASK_ID",
+                error.to_string(),
+                "Supply a non-empty task ID.",
+                true,
+            ),
+            CoordinatorError::TaskOwnershipConflict {
+                task_id,
+                owner,
+                requested,
+            } => Self::new(
+                StatusCode::CONFLICT,
+                "TASK_OWNERSHIP_CONFLICT",
+                format!("task {task_id} is owned by {owner}; requested robot was {requested}"),
+                "Use the current owner or assign a different task.",
+                false,
             ),
             CoordinatorError::Internal(error) => Self::internal(error),
         }

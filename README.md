@@ -34,7 +34,7 @@ spacl --data-dir ./.spacl-tour init
 spacl --data-dir ./.spacl-tour demo --interactive --watch
 ```
 
-Press Enter to accept each default action. You can also choose `move`, `pick`, `place`, or `wait` for each robot. SPACL enrolls three simulated robots and executes the selected tokens. Each `pick` token contains two operator approval assertions.
+Press Enter to accept each default action. You can also choose `move`, `pick`, `place`, or `wait` for each robot. SPACL assigns one task to each robot and distributes one signed token per task. It rejects one tampered token before it accepts the valid token. Each `pick` token contains two operator approval assertions.
 
 Inspect the coordinator timeline:
 
@@ -63,6 +63,7 @@ You should now see four audit chains: one coordinator chain and three robot chai
 - [x] Signed action token issuance and robot-side verification
 - [x] Sequence, replay, expiry, context, and policy gates
 - [x] Persistent robot registry and identity revocation
+- [x] Persistent task ownership and ownership conflict rejection
 - [x] Two-person approval assertion for high-risk tokens
 - [x] Emergency-stop gate in each robot runtime
 - [x] Signed, hash-chained JSON Lines audit logs
@@ -78,7 +79,6 @@ You should now see four audit chains: one coordinator chain and three robot chai
 - [ ] Authenticated operator accounts and signed operator approvals
 - [ ] ML-KEM secure transport and mutual endpoint authentication
 - [ ] Replicated coordination state and automatic failover
-- [ ] Task ownership and conflict detection
 - [ ] ROS 2 and Gazebo adapters
 - [ ] Production operator console
 - [ ] Signed Merkle-root audit batches
@@ -88,7 +88,7 @@ You should now see four audit chains: one coordinator chain and three robot chai
 ```mermaid
 flowchart TB
     P[Agentic planner or operator] -->|plan or action request| C
-    C[Coordination node<br/>registry, policy, token issuer, audit]
+    C[Coordination node<br/>registry, task ownership, policy, token issuer, audit]
     C -->|signed action token| R1
     C -->|signed action token| R2
     R1[Robot runtime<br/>verification and policy gate] --> A1[Simulator or ROS 2 adapter]
@@ -105,7 +105,8 @@ sequenceDiagram
     participant R as Robot runtime
     participant A as Audit chains
     P->>C: Submit action, context, limits, approvals
-    C->>C: Check enrollment, revocation, and approval count
+    C->>C: Check enrollment, task owner, revocation, and approval count
+    C->>A: Sign task.assigned record for a new task
     C->>A: Sign token.issued record
     C-->>P: Return hybrid-signed action token
     P->>R: Send token and current context
@@ -160,10 +161,12 @@ The demo performs these operations:
 
 1. Generate one coordinator identity and three robot identities.
 2. Enroll the three simulated robots.
-3. Issue one context-bound token to each robot.
-4. Require two operator IDs for the high-risk `pick` action.
-5. Execute `move`, `pick`, and `place` through separate robot gates.
-6. Save coordinator and robot audit chains under `./data/demo-1`.
+3. Assign one task to each robot in shared coordinator state.
+4. Issue and distribute one context-bound token to each robot.
+5. Tamper with one token and show its signature rejection.
+6. Require two operator IDs for the high-risk `pick` action.
+7. Execute `move`, `pick`, and `place` through separate robot gates.
+8. Print task ownership and save four audit chains under `./data/demo-1`.
 
 ### Generate an Identity
 
@@ -256,6 +259,7 @@ In scope now:
 - Hybrid-signed, tokenized execution
 - Local policy, replay, sequence, and emergency-stop gates
 - Persistent enrollment and revocation state
+- Persistent task ownership with conflict rejection
 - Cryptographic audit-chain verification
 
 Out of scope now:
@@ -271,7 +275,7 @@ Out of scope now:
 
 - **Phase 0:** Core cryptography and single-robot token loop — implemented
 - **Phase 0 UX:** CLI workflows, examples, OpenAPI, metrics, and audit viewer — implemented
-- **Phase 1:** Task ownership, conflict detection, shared state, and terminal operator console
+- **Phase 1:** Task lifecycle, controlled reassignment, replicated state, and terminal operator console
 - **Phase 2:** ML-KEM authenticated transport, signed operator approvals, ROS 2, and extended policies
 - **Phase 3:** Failure recovery, packaging, benchmarks, external review, and pilot deployment
 - **Later:** Threshold signatures, hardware roots of trust, Merkle batches, and richer policy languages
