@@ -1,0 +1,7 @@
+/target/
+/data/
+/secrets/
+*.identity.json
+*.tmp
+.DS_Store
+
