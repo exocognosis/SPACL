@@ -1,13 +1,10 @@
 # SPACL - Secure Physical Agent Coordination Layer
 
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE) [![Phase](https://img.shields.io/badge/Phase%200-simulation%20only-orange.svg)](#threat-model)
+
 SPACL is a secure coordination layer for Physical AI and robot fleets.
 
 ![SPACL three-robot secure execution demo](docs/demo/spacl-multi-agent-demo.gif)
-
-**[Open the 70-second H.264 demo](https://raw.githubusercontent.com/exocognosis/SPACL/main/docs/demo/spacl-multi-agent-demo.mp4).**
-
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Phase](https://img.shields.io/badge/Phase%200-simulation%20only-orange.svg)](#threat-model)
 
 ## Problem
 
@@ -53,7 +50,7 @@ audit chains verified
 demo complete
 ```
 
-The command creates one coordinator, three robot runtimes, three signed tokens, execution receipts, persistent state, and four verified audit chains. See the [embedded demo above](#spacl---secure-physical-agent-coordination-layer) or [open the MP4](https://raw.githubusercontent.com/exocognosis/SPACL/main/docs/demo/spacl-multi-agent-demo.mp4).
+The command creates one coordinator, three robot runtimes, three signed tokens, execution receipts, persistent state, and four verified audit chains. See the [embedded demo above](#spacl---secure-physical-agent-coordination-layer).
 
 ## Architecture Overview
 
