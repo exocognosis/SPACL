@@ -2,7 +2,7 @@
 
 ## System Boundary
 
-SPACL v0.1.0 has two service roles.
+SPACL v0.2.0 has two service roles.
 
 The coordination node enrolls robot identities. It assigns token sequence numbers. It signs action tokens. It also records enrollment, revocation, and token issuance in its audit chain.
 
@@ -32,11 +32,13 @@ The robot runtime controls release to the low-level adapter. An attacker with co
 
 ### Operator API
 
-The v0.1.0 API has no user authentication. Approval records state operator IDs, but they do not prove that those operators approved the action. Use this interface only in isolated development environments.
+The v0.2.0 API has no user authentication. Approval records state operator IDs, but they do not prove that those operators approved the action. Use this interface only in isolated development environments.
 
 ### Network
 
-The v0.1.0 HTTP interfaces are plaintext. They do not provide confidentiality, endpoint authentication, or downgrade protection. Use loopback or a separate authenticated tunnel during development.
+The v0.2.0 HTTP interfaces are plaintext. They do not provide confidentiality, endpoint authentication, or downgrade protection. Use loopback or a separate authenticated tunnel during development.
+
+The services allow browser requests only from `http://127.0.0.1:8000` and `http://localhost:8000`. This development Cross-Origin Resource Sharing (CORS) rule supports the static example console. It does not provide authentication.
 
 ## State and Recovery
 
@@ -45,4 +47,3 @@ The coordination node writes robot state to an atomic JSON snapshot. It writes a
 Each robot runtime persists its next sequence number, consumed token IDs, and emergency-stop state. The runtime rejects a later token until it consumes earlier sequence numbers. An operator must reconcile an abandoned token before the coordinator issues replacement work. Automated reconciliation is a Phase 1 task.
 
 The current release has one coordination node. It has no consensus or automatic failover.
-

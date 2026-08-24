@@ -16,5 +16,4 @@ The maintainer will acknowledge a complete report within five business days. Thi
 
 Reports about token forgery, signature verification, replay controls, sequence state, revocation, emergency-stop bypass, policy bypass, private key exposure, audit-chain integrity, or API authorization are in scope.
 
-SPACL v0.1.0 is not approved for production robot use. The documented absence of transport security, operator authentication, hardware-backed keys, replicated state, and safety certification is not a new vulnerability.
-
+SPACL v0.2.0 is not approved for production robot use. The documented absence of transport security, operator authentication, hardware-backed keys, replicated state, and safety certification is not a new vulnerability.

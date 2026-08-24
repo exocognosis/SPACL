@@ -1,7 +1,8 @@
 /target/
 /data/
 /secrets/
+/.spacl*/
+__pycache__/
 *.identity.json
 *.tmp
 .DS_Store
-

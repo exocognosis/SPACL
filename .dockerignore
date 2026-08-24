@@ -1,7 +1,7 @@
 target
 data
 secrets
+.spacl*
 .git
 .github
 *.identity.json
-

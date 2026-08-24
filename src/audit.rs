@@ -44,6 +44,18 @@ pub struct AuditLog {
 }
 
 impl AuditLog {
+    pub fn read(path: &Path) -> Result<Vec<AuditRecord>> {
+        let file = File::open(path).with_context(|| format!("open {}", path.display()))?;
+        BufReader::new(file)
+            .lines()
+            .enumerate()
+            .map(|(index, line)| {
+                serde_json::from_str(&line?)
+                    .with_context(|| format!("parse audit line {}", index + 1))
+            })
+            .collect()
+    }
+
     pub fn open(path: impl Into<PathBuf>) -> Result<Self> {
         let path = path.into();
         if let Some(parent) = path.parent() {

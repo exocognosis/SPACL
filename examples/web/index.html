@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SPACL Development Console</title>
+    <style>
+      body{font:16px system-ui;max-width:900px;margin:40px auto;padding:0 20px;background:#10141b;color:#e8edf3}
+      button,input{font:inherit;padding:9px;margin:4px}button{cursor:pointer;background:#55d6a8;border:0;border-radius:5px}
+      pre{background:#171d27;padding:16px;border-radius:8px;overflow:auto}.warning{color:#ffcf66}
+    </style>
+  </head>
+  <body>
+    <h1>SPACL Development Console</h1>
+    <p class="warning">Development only. The Phase 0 API has no browser authentication.</p>
+    <label>Coordinator URL <input id="url" value="http://127.0.0.1:8080" size="32"></label>
+    <button id="status">Read fleet status</button>
+    <button id="metrics">Read metrics</button>
+    <pre id="output">Select an action.</pre>
+    <script>
+      const output = document.querySelector('#output');
+      const base = () => document.querySelector('#url').value.replace(/\/$/, '');
+      async function read(path) {
+        try {
+          const response = await fetch(base() + path);
+          output.textContent = path === '/metrics' ? await response.text() : JSON.stringify(await response.json(), null, 2);
+        } catch (error) {
+          output.textContent = `Request failed: ${error}\nStart the coordinator and serve this file from an allowed development origin.`;
+        }
+      }
+      document.querySelector('#status').onclick = () => read('/v1/status');
+      document.querySelector('#metrics').onclick = () => read('/metrics');
+    </script>
+  </body>
+</html>
+

@@ -5,6 +5,21 @@ use uuid::Uuid;
 
 use crate::crypto::{PublicIdentity, SignatureBundle};
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ActivitySummary {
+    pub kind: String,
+    pub subject: String,
+    pub at_unix_ms: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ApiErrorBody {
+    pub code: String,
+    pub message: String,
+    pub action: String,
+    pub retryable: bool,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct RobotAction {
     pub skill: String,

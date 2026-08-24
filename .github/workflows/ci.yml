@@ -22,4 +22,21 @@ jobs:
       - run: cargo clippy --all-targets --all-features --locked -- -D warnings
       - run: cargo test --all-targets --locked
       - run: cargo doc --no-deps --locked
+      - run: cargo run --locked -- --help
+      - run: cargo run --locked -- audit --help
+      - name: Run three-robot demo
+        run: cargo run --locked -- --no-color demo --output target/ci-demo --watch
+      - name: Verify coordinator audit
+        run: >-
+          cargo run --locked -- audit verify
+          --audit target/ci-demo/coordinator/audit.jsonl
+          --public-identity target/ci-demo/coordinator/coordinator.public.json
+      - name: Upload demo audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spacl-demo-audits
+          path: target/ci-demo/**/audit.jsonl
+          if-no-files-found: error
+          retention-days: 14
 

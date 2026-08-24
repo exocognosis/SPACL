@@ -251,3 +251,21 @@ fn audit_chain_detects_tampering() {
     fs::write(&path, contents).unwrap();
     assert!(AuditLog::verify(&path, &[identity.public.clone()]).is_err());
 }
+
+#[test]
+fn status_reports_persisted_last_activity() {
+    let mut fixture = Fixture::new();
+    fixture.coordinator.issue_token(fixture.request()).unwrap();
+    assert_eq!(
+        fixture.coordinator.status()["last_activity"]["kind"],
+        "token.issued"
+    );
+
+    let token = fixture.coordinator.issue_token(fixture.request()).unwrap();
+    let mut runtime = fixture.runtime();
+    assert!(runtime.execute(&token, &fixture.context).is_err());
+    assert_eq!(
+        runtime.status()["last_activity"]["kind"],
+        "execution.rejected"
+    );
+}

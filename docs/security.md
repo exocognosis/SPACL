@@ -2,7 +2,7 @@
 
 ## Security Properties
 
-SPACL v0.1.0 implements these properties:
+SPACL v0.2.0 implements these properties:
 
 - A robot accepts tokens only from its pinned coordination identity.
 - A token signature covers all token claims.
@@ -48,7 +48,7 @@ A high-risk token requires two distinct operator IDs. The coordination node sign
 
 Phase 2 must add authenticated operator accounts, separate signed approval objects, freshness checks, and role policy.
 
-## Threats Not Controlled in v0.1.0
+## Threats Not Controlled in v0.2.0
 
 - Network interception, traffic analysis, or endpoint impersonation
 - Coordination host compromise
@@ -65,4 +65,3 @@ Phase 2 must add authenticated operator accounts, separate signed approval objec
 ## Required Production Work
 
 Add ML-KEM-based mutually authenticated transport or a reviewed hybrid Transport Layer Security (TLS) profile. Add hardware-backed keys. Authenticate human operators. Add physical safety controllers. Complete a threat model, penetration test, dependency audit, fault-injection campaign, and site hazard assessment.
-

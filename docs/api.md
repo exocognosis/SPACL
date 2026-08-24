@@ -1,12 +1,23 @@
 # API Reference
 
-SPACL v0.1.0 uses JSON over HTTP. The default examples use the coordination node at `127.0.0.1:8080` and one robot runtime at `127.0.0.1:8081`.
+SPACL v0.2.0 uses JSON over HTTP. The default examples use the coordination node at `127.0.0.1:8080` and one robot runtime at `127.0.0.1:8081`.
+
+The [OpenAPI 3.1 description](openapi.yaml) defines the request and response schemas. The [development API console](api-console.html) renders it with Redoc.
 
 ## Health
 
 ```text
 GET /healthz
 ```
+
+## Status and Metrics
+
+```text
+GET /v1/status
+GET /metrics
+```
+
+`/v1/status` returns the node role, current state, and last activity. `/metrics` returns Prometheus text exposition for requests, issued tokens, token issue time, executions, and rejection codes.
 
 ## Enroll a Robot
 
@@ -92,6 +103,17 @@ Content-Type: application/json
 
 The runtime returns an execution receipt or a rejection reason.
 
+Rejections have a stable structure:
+
+```json
+{
+  "code": "SEQUENCE_GAP",
+  "message": "expected sequence 0, received 1",
+  "action": "Reconcile or execute sequence 0 before later tokens.",
+  "retryable": true
+}
+```
+
 ## Set Emergency Stop
 
 ```text
@@ -112,4 +134,3 @@ POST /v1/robots/robot-1/revoke
 ```
 
 Revocation prevents new token issuance. It does not delete an identity or recall a token that the coordination node already issued.
-

@@ -1,0 +1,317 @@
+openapi: 3.1.0
+info:
+  title: SPACL Development API
+  version: 0.2.0
+  description: |
+    Development API for the SPACL coordinator and robot runtime.
+    Version 0.2.0 uses plaintext HTTP and has no client authentication.
+    Bind it to loopback or an isolated test network.
+servers:
+  - url: http://127.0.0.1:8080
+    description: Coordinator
+  - url: http://127.0.0.1:8081
+    description: Robot runtime
+tags:
+  - name: system
+  - name: coordinator
+  - name: robot
+paths:
+  /healthz:
+    get:
+      tags: [system]
+      summary: Check process health
+      responses:
+        "200":
+          description: Process is ready.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /metrics:
+    get:
+      tags: [system]
+      summary: Read Prometheus metrics
+      responses:
+        "200":
+          description: Prometheus text exposition.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /v1/status:
+    get:
+      tags: [system]
+      summary: Read node status and last activity
+      responses:
+        "200":
+          description: Current coordinator or robot state.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /v1/fleet:
+    get:
+      tags: [coordinator]
+      summary: Read coordinator and enrolled robot status
+      responses:
+        "200":
+          description: Fleet status.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /v1/robots:
+    post:
+      tags: [coordinator]
+      summary: Enroll one robot public identity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RobotRegistration"
+      responses:
+        "201":
+          description: Robot enrolled.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "409":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/Error"
+  /v1/robots/{robot_id}/revoke:
+    post:
+      tags: [coordinator]
+      summary: Revoke one robot identity
+      parameters:
+        - name: robot_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Identity revoked.
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/tokens:
+    post:
+      tags: [coordinator]
+      summary: Issue a signed action token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenRequest"
+      responses:
+        "201":
+          description: Signed action token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignedActionToken"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/Error"
+  /v1/execute:
+    post:
+      tags: [robot]
+      summary: Verify and execute one action token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, context]
+              properties:
+                token:
+                  $ref: "#/components/schemas/SignedActionToken"
+                context:
+                  $ref: "#/components/schemas/ExecutionContext"
+      responses:
+        "200":
+          description: Execution receipt.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "403":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "410":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/Error"
+        "423":
+          $ref: "#/components/responses/Error"
+  /v1/emergency-stop:
+    post:
+      tags: [robot]
+      summary: Set the persisted emergency-stop gate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [active]
+              properties:
+                active:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated robot state.
+components:
+  responses:
+    Error:
+      description: Machine-readable rejection.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+  schemas:
+    Health:
+      type: object
+      required: [status, version]
+      properties:
+        status:
+          const: ok
+        version:
+          type: string
+    ApiError:
+      type: object
+      required: [code, message, action, retryable]
+      properties:
+        code:
+          type: string
+          examples: [SEQUENCE_GAP]
+        message:
+          type: string
+        action:
+          type: string
+        retryable:
+          type: boolean
+    PublicIdentity:
+      type: object
+      required: [key_id, subject, algorithm, ml_dsa_65_public_key, ed25519_public_key]
+      properties:
+        key_id:
+          type: string
+        subject:
+          type: string
+        algorithm:
+          const: ML-DSA-65+Ed25519
+        ml_dsa_65_public_key:
+          type: string
+        ed25519_public_key:
+          type: string
+    RobotRegistration:
+      type: object
+      required: [robot_id, display_name, identity]
+      properties:
+        robot_id:
+          type: string
+        display_name:
+          type: string
+        identity:
+          $ref: "#/components/schemas/PublicIdentity"
+    RobotAction:
+      type: object
+      required: [skill]
+      properties:
+        skill:
+          type: string
+          enum: [move, pick, place, wait]
+        arguments:
+          type: object
+          additionalProperties: true
+        requested_speed_mps:
+          type: [number, "null"]
+          minimum: 0
+        requested_force_newtons:
+          type: [number, "null"]
+          minimum: 0
+    ExecutionContext:
+      type: object
+      required: [task_id, zone, state_hash]
+      properties:
+        task_id:
+          type: string
+        zone:
+          type: string
+        state_hash:
+          type: string
+    PolicyConstraints:
+      type: object
+      properties:
+        allowed_skills:
+          type: array
+          items:
+            type: string
+        allowed_zones:
+          type: array
+          items:
+            type: string
+        max_speed_mps:
+          type: [number, "null"]
+        max_force_newtons:
+          type: [number, "null"]
+    Approval:
+      type: object
+      required: [operator_id, approved_at_unix_ms]
+      properties:
+        operator_id:
+          type: string
+        approved_at_unix_ms:
+          type: integer
+          format: int64
+    TokenRequest:
+      type: object
+      required: [robot_id, action, context]
+      properties:
+        robot_id:
+          type: string
+        action:
+          $ref: "#/components/schemas/RobotAction"
+        context:
+          $ref: "#/components/schemas/ExecutionContext"
+        ttl_seconds:
+          type: integer
+          minimum: 1
+          maximum: 300
+          default: 30
+        constraints:
+          $ref: "#/components/schemas/PolicyConstraints"
+        risk:
+          type: string
+          enum: [normal, high]
+          default: normal
+        approvals:
+          type: array
+          items:
+            $ref: "#/components/schemas/Approval"
+    SignedActionToken:
+      type: object
+      required: [schema, claims, signature]
+      properties:
+        schema:
+          const: spacl.action-token.v1
+        claims:
+          type: object
+          additionalProperties: true
+        signature:
+          type: object
+          additionalProperties: true
+

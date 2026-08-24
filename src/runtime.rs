@@ -8,7 +8,10 @@ use thiserror::Error;
 use crate::{
     AuditEvent, AuditLog, HybridIdentity, PublicIdentity,
     crypto::{canonical_json, sha256_hex},
-    model::{ExecutionContext, ExecutionReceipt, ExecutionStatus, RiskLevel, SignedActionToken},
+    model::{
+        ActivitySummary, ExecutionContext, ExecutionReceipt, ExecutionStatus, RiskLevel,
+        SignedActionToken,
+    },
 };
 
 const CLOCK_SKEW_MS: i64 = 5_000;
@@ -42,6 +45,8 @@ struct RuntimeState {
     next_sequence: u64,
     emergency_stop: bool,
     consumed_tokens: BTreeSet<String>,
+    #[serde(default)]
+    last_activity: Option<ActivitySummary>,
 }
 
 pub struct RobotRuntime {
@@ -93,6 +98,8 @@ impl RobotRuntime {
     ) -> Result<ExecutionReceipt, ExecutionError> {
         let result = self.verify(token, context);
         if let Err(error) = result {
+            self.set_activity("execution.rejected", &token.claims.token_id.to_string());
+            let _ = self.persist();
             let _ = self.audit.append(
                 AuditEvent {
                     kind: "execution.rejected".into(),
@@ -123,6 +130,7 @@ impl RobotRuntime {
             .consumed_tokens
             .insert(token.claims.token_id.to_string());
         self.state.next_sequence += 1;
+        self.set_activity("execution.completed", &token.claims.token_id.to_string());
         self.persist()?;
         let receipt = ExecutionReceipt {
             token_id: token.claims.token_id,
@@ -243,6 +251,14 @@ impl RobotRuntime {
 
     pub fn set_emergency_stop(&mut self, active: bool) -> Result<()> {
         self.state.emergency_stop = active;
+        self.set_activity(
+            if active {
+                "emergency_stop.activated"
+            } else {
+                "emergency_stop.cleared"
+            },
+            &self.robot_id.clone(),
+        );
         self.persist()?;
         self.audit.append(
             AuditEvent {
@@ -263,11 +279,21 @@ impl RobotRuntime {
 
     pub fn status(&self) -> serde_json::Value {
         serde_json::json!({
+            "role": "robot",
             "robot_id": self.robot_id,
             "next_sequence": self.state.next_sequence,
             "emergency_stop": self.state.emergency_stop,
             "identity_key_id": self.identity.public.key_id,
+            "last_activity": self.state.last_activity,
         })
+    }
+
+    fn set_activity(&mut self, kind: &str, subject: &str) {
+        self.state.last_activity = Some(ActivitySummary {
+            kind: kind.into(),
+            subject: subject.into(),
+            at_unix_ms: Utc::now().timestamp_millis(),
+        });
     }
 
     fn persist(&self) -> Result<()> {
