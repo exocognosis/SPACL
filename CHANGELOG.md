@@ -17,6 +17,7 @@
 - Embed the full demo loop in the top-level README with an animated GIF and a direct raw MP4 link.
 - Rewrite the README as one reader path: product, demo, problem, solution, quick start, architecture, features, threat model, specifications, repository layout, documentation, roadmap, and license.
 - Move implementation details from the README into focused architecture, security, stack, API, deployment, configuration, ROS 2, and troubleshooting documents.
+- Add a fastest-path command and separate implemented v0.2.0 features from planned work in the README.
 
 ## 0.2.0
 

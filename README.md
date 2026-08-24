@@ -6,6 +6,8 @@ SPACL is a secure coordination layer for Physical AI and robot fleets.
 
 ![SPACL three-robot secure execution demo](docs/demo/spacl-multi-agent-demo.gif)
 
+**Fastest path:** Run `cargo run --release -- --no-color --data-dir ./.spacl-demo demo --watch` from the repository root. You will see three signed tokens, one modified-token rejection, three completed actions, and four verified audit chains.
+
 ## Problem
 
 High-level AI can plan robot work, but robot controllers must not trust raw planner commands. A robot must know who authorized an action, whether the action changed in transit, whether it is fresh and in sequence, and whether it complies with local policy.
@@ -71,7 +73,7 @@ flowchart LR
 
 The coordinator enrolls robot identities, assigns task ownership, checks authorization policy, and signs action tokens. Each robot runtime pins the coordinator identity and acts as a separate execution gate. It releases an action only after all token and local-policy checks pass. The current adapter simulates robot actions; a future ROS 2 adapter will occupy the controller boundary.
 
-## Features
+## Implemented in v0.2.0 / Phase 0
 
 - Hybrid ML-DSA-65 and Ed25519 identity signatures
 - Signed action tokens with replay, sequence, expiry, target, context, and policy gates
@@ -149,9 +151,8 @@ scripts/                reproducible demo-video renderer
 - [Demo video provenance](docs/demo/README.md)
 - [Changelog](CHANGELOG.md)
 
-## Roadmap
+## Planned
 
-- **Phase 0 — implemented:** Hybrid signatures, token gates, persistent state, audit chains, REST services, CLI workflows, and three-robot simulation
 - **Phase 1:** Task lifecycle, controlled reassignment, replicated state, recovery, and terminal operator console
 - **Phase 2:** Authenticated ML-KEM transport, signed operator approvals, ROS 2, Gazebo, and extended policies
 - **Phase 3:** Fault injection, benchmarks, packaging, external security review, and pilot deployment
