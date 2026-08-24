@@ -1,4 +1,4 @@
-# SPACL
+# SPACL - Secure Physical Agent Coordination Layer
 
 **Secure, quantum-resistant coordination and accountability for multi-robot and Physical AI fleets.**
 
