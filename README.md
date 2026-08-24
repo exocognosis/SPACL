@@ -25,6 +25,18 @@ SPACL puts a cryptographic execution gate between planners and robot controllers
 
 In the demo, three robots receive separate `move`, `pick`, and `place` tasks. SPACL modifies one signed token and proves that the target robot rejects it. The three original tokens execute, task ownership remains visible, and all four audit chains verify.
 
+## Use Cases
+
+SPACL is for systems in which a planner or operator assigns high-level work to multiple physical agents. It binds each action to an authorized identity, target agent, task context, time window, sequence, and policy. The target agent verifies this authorization before it passes the action to its existing controller.
+
+- **Drone fleets:** Authorize inspection missions, approved flight zones, return-to-base actions, and payload operations for a specific drone.
+- **Logistics networks:** Coordinate autonomous mobile robots, forklifts, robot arms, and conveyor controllers. Exclusive task ownership prevents two agents from claiming the same move, pick, or transfer.
+- **Autonomous vehicle fleets:** Authorize dispatch, yard movement, parking, charging, or approved route segments. Record which vehicle accepted each fleet command and under which policy.
+- **Manufacturing and laboratory cells:** Gate robot skills, require additional approval for high-consequence actions, and record a signed chain of custody for each operation.
+- **Mixed real and simulated fleets:** Test planners, policies, failure cases, and audit workflows through one coordination interface before hardware integration.
+
+SPACL does not perform perception, route planning, trajectory control, collision avoidance, or emergency physical safety control. It supplies the identity, authorization, coordination, policy, and audit layer between high-level planners and existing agent controllers. Version 0.2.0 demonstrates this model with simulated agents. Production hardware adapters are planned.
+
 ## Quick Start
 
 Prerequisites: Rust 1.88 or later and Git.

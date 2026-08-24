@@ -18,6 +18,7 @@
 - Rewrite the README as one reader path: product, demo, problem, solution, quick start, architecture, features, threat model, specifications, repository layout, documentation, roadmap, and license.
 - Move implementation details from the README into focused architecture, security, stack, API, deployment, configuration, ROS 2, and troubleshooting documents.
 - Add a fastest-path command and separate implemented v0.2.0 features from planned work in the README.
+- Add target use cases for drone fleets, logistics networks, autonomous vehicles, industrial cells, and mixed real and simulated fleets.
 
 ## 0.2.0
 
