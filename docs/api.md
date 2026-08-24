@@ -2,6 +2,14 @@
 
 SPACL v0.2.0 uses JSON over HTTP. The default examples use the coordination node at `127.0.0.1:8080` and one robot runtime at `127.0.0.1:8081`.
 
+For an in-process command-line loop that does not start HTTP services, run:
+
+```bash
+spacl --data-dir ./.spacl single-agent --skill move --watch
+```
+
+The command issues and verifies one signed token, runs one simulated action, and verifies the coordinator and robot audit chains.
+
 The [OpenAPI 3.1 description](openapi.yaml) defines the request and response schemas. The [development API console](api-console.html) renders it with Redoc.
 
 ## Health

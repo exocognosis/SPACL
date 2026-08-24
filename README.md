@@ -17,11 +17,19 @@ The current release supplies a deployable Phase 0 vertical slice. It uses hybrid
 
 ## Five-Minute Tour
 
-Build SPACL. Then create an isolated workspace and run the interactive demo:
+Build SPACL. Then run one complete signed-token loop:
 
 ```bash
 cargo build --release
 export PATH="$PWD/target/release:$PATH"
+spacl --data-dir ./.spacl-tour single-agent --skill move --watch
+```
+
+This command generates one coordinator and one simulated robot. It issues and verifies one signed action token, executes the simulated action, and verifies both signed hash-chain audit logs. The command saves the token, execution receipt, identities, and audit records under `./.spacl-tour/single-agent/`.
+
+Run the interactive three-robot demo:
+
+```bash
 spacl --data-dir ./.spacl-tour init
 spacl --data-dir ./.spacl-tour demo --interactive --watch
 ```
@@ -51,6 +59,7 @@ You should now see four audit chains: one coordinator chain and three robot chai
 
 - [x] Hybrid ML-DSA-65 and Ed25519 device identity
 - [x] ML-KEM-768 primitive selection and round-trip validation
+- [x] One-command single-agent issue, verify, execute, and audit loop
 - [x] Signed action token issuance and robot-side verification
 - [x] Sequence, replay, expiry, context, and policy gates
 - [x] Persistent robot registry and identity revocation

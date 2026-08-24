@@ -42,7 +42,7 @@ const ROBOT_URL: &str = "http://127.0.0.1:8081";
     version,
     about = "Secure Physical Agent Coordination Layer",
     long_about = "Issue verified action tokens, run robot execution gates, and inspect signed audit chains for simulated multi-robot fleets.",
-    after_help = "Start here:\n  spacl init\n  spacl demo --interactive --watch\n  spacl status\n\nDocumentation: https://github.com/exocognosis/SPACL"
+    after_help = "Start here:\n  spacl single-agent --watch\n  spacl init\n  spacl demo --interactive --watch\n  spacl status\n\nDocumentation: https://github.com/exocognosis/SPACL"
 )]
 struct Cli {
     /// Workspace root. Defaults to the operating system local data directory.
@@ -138,6 +138,12 @@ enum Command {
         output: Option<PathBuf>,
     },
 
+    /// Run one complete signed-token loop with one simulated robot.
+    #[command(
+        after_help = "Example:\n  spacl --data-dir ./.spacl single-agent --skill move --watch"
+    )]
+    SingleAgent(SingleAgentArgs),
+
     /// Issue action tokens through the coordinator API.
     Token {
         #[command(subcommand)]
@@ -197,6 +203,22 @@ struct TokenIssueArgs {
     /// Print the full token, including both signatures.
     #[arg(long)]
     show_token: bool,
+}
+
+#[derive(Args)]
+struct SingleAgentArgs {
+    /// Simulated action to authorize and execute.
+    #[arg(long, default_value = "move", value_parser = ["move", "pick", "place", "wait"])]
+    skill: String,
+    /// Override the generated output directory.
+    #[arg(long)]
+    output: Option<PathBuf>,
+    /// Print the complete signed token.
+    #[arg(long)]
+    show_token: bool,
+    /// Print both audit timelines after verification.
+    #[arg(long)]
+    watch: bool,
 }
 
 #[derive(Args)]
@@ -353,6 +375,18 @@ async fn run(command: Command, data_dir: PathBuf, compact: bool) -> Result<()> {
                 data_dir.join(format!("demos/{}", Utc::now().format("%Y%m%d-%H%M%S")))
             });
             run_demo(&output, interactive, watch, compact)?;
+        }
+        Command::SingleAgent(arguments) => {
+            let output = arguments.output.unwrap_or_else(|| {
+                data_dir.join(format!("single-agent/{}", Utc::now().timestamp_millis()))
+            });
+            run_single_agent(
+                &output,
+                &arguments.skill,
+                arguments.show_token,
+                arguments.watch,
+                compact,
+            )?;
         }
         Command::Token { command } => match command {
             TokenCommand::Issue(arguments) => {
@@ -1028,6 +1062,152 @@ fn run_demo(data_dir: &Path, interactive: bool, watch: bool, compact: bool) -> R
         "You should now see four audit chains under {}.",
         data_dir.display()
     );
+    Ok(())
+}
+
+fn run_single_agent(
+    data_dir: &Path,
+    skill: &str,
+    show_token: bool,
+    watch: bool,
+    compact: bool,
+) -> Result<()> {
+    if data_dir.exists() {
+        bail!(
+            "single-agent output already exists: {}\nNext: choose another --output path",
+            data_dir.display()
+        )
+    }
+    secure_dir(data_dir)?;
+
+    let robot_id = "single-robot-1";
+    let coordinator_dir = data_dir.join("coordinator");
+    let robot_dir = data_dir.join(robot_id);
+    secure_dir(&robot_dir)?;
+
+    let mut coordinator = Coordinator::open(coordinator_dir.clone())?;
+    let robot_identity = HybridIdentity::generate(robot_id);
+    robot_identity.save_private(&robot_dir.join("identity.json"))?;
+    robot_identity.save_public(&robot_dir.join("public.json"))?;
+    coordinator.enroll(RobotRegistration {
+        robot_id: robot_id.into(),
+        display_name: "Single-Agent Simulator".into(),
+        identity: robot_identity.public.clone(),
+    })?;
+
+    let context = ExecutionContext {
+        task_id: "single-agent-loop".into(),
+        zone: "simulation-cell-1".into(),
+        state_hash: "sha256:single-agent-world-v1".into(),
+    };
+    let risk = if skill == "pick" {
+        RiskLevel::High
+    } else {
+        RiskLevel::Normal
+    };
+    let approvals = if risk == RiskLevel::High {
+        vec![
+            Approval {
+                operator_id: "operator-alice".into(),
+                approved_at_unix_ms: Utc::now().timestamp_millis(),
+            },
+            Approval {
+                operator_id: "operator-bob".into(),
+                approved_at_unix_ms: Utc::now().timestamp_millis(),
+            },
+        ]
+    } else {
+        vec![]
+    };
+    let token = coordinator.issue_token(TokenRequest {
+        robot_id: robot_id.into(),
+        action: RobotAction {
+            skill: skill.into(),
+            arguments: BTreeMap::new(),
+            requested_speed_mps: Some(0.5),
+            requested_force_newtons: Some(20.0),
+        },
+        context: context.clone(),
+        ttl_seconds: 30,
+        constraints: PolicyConstraints {
+            allowed_skills: vec![skill.into()],
+            allowed_zones: vec![context.zone.clone()],
+            max_speed_mps: Some(1.0),
+            max_force_newtons: Some(50.0),
+        },
+        risk,
+        approvals,
+    })?;
+    let token_path = data_dir.join("token.json");
+    fs::write(&token_path, serde_json::to_vec_pretty(&token)?)?;
+    println!(
+        "{} {} sequence={} action={}",
+        "1. token issued".green().bold(),
+        short_id(&token.claims.token_id.to_string()),
+        token.claims.sequence,
+        token.claims.action.skill
+    );
+    if show_token {
+        print_json(&token, compact)?;
+    }
+
+    let robot_public = robot_identity.public.clone();
+    let mut runtime = RobotRuntime::open(
+        robot_id,
+        robot_identity,
+        coordinator.identity.public.clone(),
+        robot_dir.clone(),
+    )?;
+    runtime.verify(&token, &context)?;
+    println!("{}", "2. token verified".green().bold());
+
+    let receipt = runtime.execute(&token, &context)?;
+    let receipt_path = data_dir.join("receipt.json");
+    fs::write(&receipt_path, serde_json::to_vec_pretty(&receipt)?)?;
+    println!("{} {}", "3. action completed".green().bold(), skill);
+
+    let coordinator_audit = coordinator_dir.join("audit.jsonl");
+    let robot_audit = robot_dir.join("audit.jsonl");
+    let coordinator_records = AuditLog::verify(
+        &coordinator_audit,
+        std::slice::from_ref(&coordinator.identity.public),
+    )?;
+    let robot_records = AuditLog::verify(&robot_audit, std::slice::from_ref(&robot_public))?;
+    println!(
+        "{} coordinator={} robot={}",
+        "4. audit chains verified".green().bold(),
+        coordinator_records.len(),
+        robot_records.len()
+    );
+    if watch {
+        println!("\n{}", "coordinator audit".cyan().bold());
+        print_audit(&coordinator_audit, 0)?;
+        println!("\n{}", "robot audit".cyan().bold());
+        print_audit(&robot_audit, 0)?;
+    }
+
+    let result = serde_json::json!({
+        "status": "completed",
+        "robot_id": robot_id,
+        "token_id": token.claims.token_id,
+        "sequence": token.claims.sequence,
+        "action": skill,
+        "verification": "passed",
+        "receipt": receipt,
+        "token_file": token_path,
+        "receipt_file": receipt_path,
+        "coordinator_audit": {
+            "file": coordinator_audit,
+            "verified_records": coordinator_records.len(),
+        },
+        "robot_audit": {
+            "file": robot_audit,
+            "verified_records": robot_records.len(),
+        },
+        "output": data_dir,
+    });
+    println!("\n{}", "single-agent loop complete".green().bold());
+    print_json(&result, compact)?;
     Ok(())
 }
 

@@ -8,6 +8,9 @@ help:
 init:
     cargo run -- --data-dir "{{ data_dir }}" init
 
+single-agent:
+    cargo run -- --data-dir "{{ data_dir }}" single-agent --watch
+
 demo:
     cargo run -- --data-dir "{{ data_dir }}" demo --watch
 
