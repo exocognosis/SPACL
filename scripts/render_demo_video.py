@@ -50,6 +50,12 @@ def arguments() -> argparse.Namespace:
         help="README poster output path",
     )
     parser.add_argument(
+        "--gif",
+        type=Path,
+        default=Path("docs/demo/spacl-multi-agent-demo.gif"),
+        help="Animated README preview output path",
+    )
+    parser.add_argument(
         "--manifest",
         type=Path,
         default=Path("docs/demo/manifest.json"),
@@ -330,6 +336,27 @@ def main() -> None:
         args.poster.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(frame_paths[10], args.poster)
 
+        args.gif.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            [
+                ffmpeg,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-i",
+                str(args.output),
+                "-vf",
+                "fps=6,scale=960:-1:flags=lanczos,split[s0][s1];"
+                "[s0]palettegen=max_colors=96:stats_mode=diff[p];"
+                "[s1][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle",
+                "-loop",
+                "0",
+                str(args.gif),
+            ],
+            check=True,
+        )
+
     probe = json.loads(
         subprocess.run(
             [
@@ -348,9 +375,11 @@ def main() -> None:
         ).stdout
     )
     digest = hashlib.sha256(args.output.read_bytes()).hexdigest()
+    gif_digest = hashlib.sha256(args.gif.read_bytes()).hexdigest()
     manifest = {
         "artifact": str(args.output),
         "poster": str(args.poster),
+        "embedded_preview": str(args.gif),
         "source": "output from the real SPACL three-robot demo command",
         "source_command": "spacl --no-color --compact demo --output <temporary> --watch",
         "duration_seconds": round(float(probe["format"]["duration"]), 3),
@@ -359,6 +388,7 @@ def main() -> None:
         "video_codec": probe["streams"][0]["codec_name"],
         "audio": False,
         "sha256": digest,
+        "embedded_preview_sha256": gif_digest,
     }
     args.manifest.parent.mkdir(parents=True, exist_ok=True)
     args.manifest.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

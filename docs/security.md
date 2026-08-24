@@ -70,4 +70,4 @@ Phase 2 must add authenticated operator accounts, separate signed approval objec
 
 ## Required Production Work
 
-Add ML-KEM-based mutually authenticated transport or a reviewed hybrid Transport Layer Security (TLS) profile. Add hardware-backed keys. Authenticate human operators. Add physical safety controllers. Complete a threat model, penetration test, dependency audit, fault-injection campaign, and site hazard assessment.
+Add ML-KEM-based mutually authenticated transport or a reviewed hybrid Transport Layer Security (TLS) profile. Add hardware-backed keys. Authenticate human operators. Add physical safety controllers. Maintain the [repository threat model](threat-model.md). Complete an external penetration test, dependency audit, fault-injection campaign, and site hazard assessment.

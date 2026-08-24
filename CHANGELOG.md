@@ -12,6 +12,9 @@
 - Make the three-robot demo verify all four audit chains and save each distributed token.
 - Prevent interactive token expiry and ensure the invalid-token test always changes the action.
 - Add a reproducible 70-second demo video and a README walkthrough.
+- Move the operational value proposition to the top of the README and add a concrete warehouse demo scenario.
+- Add a repository-scoped threat model with trust boundaries, attacker stories, security invariants, and severity guidance.
+- Embed the full demo loop in the top-level README with an animated GIF and a direct raw MP4 link.
 
 ## 0.2.0
 

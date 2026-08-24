@@ -1,6 +1,7 @@
 {
   "artifact": "docs/demo/spacl-multi-agent-demo.mp4",
   "poster": "docs/demo/spacl-multi-agent-demo-poster.png",
+  "embedded_preview": "docs/demo/spacl-multi-agent-demo.gif",
   "source": "output from the real SPACL three-robot demo command",
   "source_command": "spacl --no-color --compact demo --output <temporary> --watch",
   "duration_seconds": 70.0,
@@ -8,5 +9,6 @@
   "height": 720,
   "video_codec": "h264",
   "audio": false,
-  "sha256": "046ed0928bd5a85c599b3e75f2c8668f60343443c740c5d008ca70a6d2e5c4ca"
+  "sha256": "bf59cc9a8b3a3d3a6ffcea209de3a84bdf9726c23f9a5446ed68c6e387323e44",
+  "embedded_preview_sha256": "67ddfe781fd22d12fe4a604dc2b59c3cb7bad32667cde87e307625f25e0d2d17"
 }

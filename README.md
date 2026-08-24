@@ -6,6 +6,12 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Phase](https://img.shields.io/badge/Phase%200-simulation%20only-orange.svg)](#project-status-and-scope)
 
+## Why SPACL
+
+High-level AI can plan robot work, but a robot controller must not trust raw planner commands. SPACL puts a cryptographic execution gate in front of each robot. The gate rejects modified, replayed, expired, out-of-order, wrongly targeted, or policy-breaking actions before they reach the controller.
+
+Each accepted action produces signed evidence of the issuer, target robot, task context, policy limits, execution result, and event order. This gives operators one control point for authorization and one audit path for accountability across a mixed robot fleet.
+
 > [!WARNING]
 > SPACL v0.2.0 is an early MVP. It is not safety-certified. Do not connect it to a production robot without an independent security review, a physical safety controller, and site-specific hazard controls.
 
@@ -14,6 +20,22 @@
 SPACL is middleware between high-level planners and robot controllers. It converts actions into signed, context-bound tokens. A robot runtime executes an action only after it verifies the token signature, target, sequence, expiry, context, and policy limits.
 
 The current release supplies a deployable Phase 0 vertical slice. It uses hybrid ML-DSA-65 and Ed25519 signatures. It also writes signed, hash-chained audit records for enrollment, token issuance, execution, rejection, revocation, and emergency-stop events.
+
+## How It Works
+
+**Concrete scenario: three robots in a controlled warehouse cell.**
+
+![SPACL three-robot secure execution demo](docs/demo/spacl-multi-agent-demo.gif)
+
+The complete 70-second loop is embedded above. **[Open the H.264 MP4](https://raw.githubusercontent.com/exocognosis/SPACL/main/docs/demo/spacl-multi-agent-demo.mp4).**
+
+1. The coordinator assigns `warehouse-task-1` to `sim-robot-1` for `move`, `warehouse-task-2` to `sim-robot-2` for `pick`, and `warehouse-task-3` to `sim-robot-3` for `place`.
+2. The coordinator signs and distributes one context-bound action token per task. The `pick` token includes two operator approval assertions because it is high risk.
+3. The demo changes the first signed action from `move` to `wait`. The first robot detects the signature mismatch and rejects the modified token.
+4. Each robot verifies and accepts its original token. The three simulated actions complete through separate execution gates.
+5. SPACL prints the task owners and verifies one coordinator audit chain plus three robot audit chains.
+
+The video uses output from the real SPACL binary. Run `just demo-video` to rebuild it.
 
 ## Five-Minute Tour
 
@@ -44,20 +66,6 @@ spacl audit pretty \
 ```
 
 You should now see four audit chains: one coordinator chain and three robot chains.
-
-## How It Works
-
-[![Watch the 70-second SPACL multi-agent demo](docs/demo/spacl-multi-agent-demo-poster.png)](docs/demo/spacl-multi-agent-demo.mp4)
-
-**[Watch the 70-second MP4 demo](docs/demo/spacl-multi-agent-demo.mp4).**
-
-1. The coordinator assigns one task to each of three simulated robots.
-2. It signs and distributes one action token for each task.
-3. The first robot rejects a token after its signed action is modified.
-4. Each robot accepts its valid token and runs its simulated action.
-5. The coordinator prints the shared task owners. SPACL then verifies the coordinator audit chain and all three robot audit chains.
-
-The video uses output from the real SPACL binary. Run `just demo-video` to rebuild it.
 
 **Key value**
 
@@ -133,7 +141,7 @@ sequenceDiagram
 
 The coordination node is an authorization trust boundary. Robot runtimes trust its pinned public identity. Each runtime is a separate execution trust boundary. The simulated skill adapter does not send commands to hardware.
 
-The current HTTP services do not provide transport security or client authentication. Bind them to loopback or an isolated test network. See [Architecture](docs/architecture.md) and [Security Model](docs/security.md).
+The current HTTP services do not provide transport security or client authentication. Bind them to loopback or an isolated test network. See [Architecture](docs/architecture.md), [Security Model](docs/security.md), and [Threat Model](docs/threat-model.md).
 
 ## Tech Stack
 
@@ -253,6 +261,7 @@ Install [just](https://github.com/casey/just). Then run `just init`, `just demo`
 - [Architecture](docs/architecture.md)
 - [Minimal technology stack](docs/stack.md)
 - [Security model and token format](docs/security.md)
+- [Threat model](docs/threat-model.md)
 - [API reference](docs/api.md)
 - [OpenAPI 3.1](docs/openapi.yaml)
 - [API console](docs/api-console.html)
